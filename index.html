@@ -5,27 +5,70 @@
 <title>CHEMIDREAM TERMINAL</title>
 
 <style>
-body {
-  background: black;
-  color: #9cff9c;
-  font-family: monospace;
+html, body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  font-family: monospace;
+  color: #9cff9c;
+  overflow: hidden;
 }
 
-#monitor {
-  border: 3px solid #1aff1a;
-  box-shadow: 0 0 25px #0f0;
-  padding: 20px;
-  width: 90%;
-  max-width: 900px;
-  min-height: 450px;
-  margin: 40px auto;
-  overflow-y: auto;
+/* ===== BOOT SCREEN ===== */
+#boot-screen {
+  position: fixed;
+  inset: 0;
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  animation: flicker 1.5s infinite;
+}
+
+@keyframes flicker {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ===== MONITOR BACKGROUND (optional image) ===== */
+#background {
+  position: fixed;
+  inset: 0;
+  background: url("assets/monitor.jpg") center center no-repeat;
+  background-size: cover;
+  z-index: -2;
+}
+
+/* ===== SCREEN NOISE ===== */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.03),
+    rgba(255,255,255,0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ===== TERMINAL ===== */
+.monitor {
+  position: fixed;
+  inset: 0;
+  padding: 40px;
+  display: none;
 }
 
 #terminal {
   white-space: pre-wrap;
+  line-height: 1.4;
 }
 
 #input-line {
@@ -33,180 +76,172 @@ body {
 }
 
 #prompt {
-  margin-right: 5px;
+  margin-right: 8px;
 }
 
-input {
-  background: black;
-  color: #9cff9c;
-  border: none;
+#input {
   outline: none;
-  font-family: monospace;
+  border: none;
+  background: transparent;
+  color: #9cff9c;
   flex: 1;
 }
 
+/* Cursor blink */
 .cursor {
   display: inline-block;
   width: 10px;
-  animation: blink 1s steps(2, start) infinite;
+  background: #9cff9c;
+  margin-left: 2px;
+  animation: blink 1s steps(2) infinite;
 }
 
 @keyframes blink {
-  to { visibility: hidden; }
+  0% { opacity: 1; }
+  50% { opacity: 0; }
 }
 </style>
 </head>
 
 <body>
 
-<div id="monitor">
+<div id="background"></div>
+
+<div id="boot-screen">
+  PRESS ANY KEY TO CONTINUE
+</div>
+
+<div class="monitor">
   <div id="terminal"></div>
   <div id="input-line">
     <span id="prompt">&gt;</span>
-    <input id="input" autofocus autocomplete="off">
-    <span class="cursor">█</span>
+    <span id="input"></span><span class="cursor"></span>
   </div>
 </div>
 
 <script>
 const terminal = document.getElementById("terminal");
 const input = document.getElementById("input");
+const boot = document.getElementById("boot-screen");
+const monitor = document.querySelector(".monitor");
 
-let accessGranted = false;
-let phase = 1; // <-- МЕНЯЙ ЭТО ЧИСЛО СО ВРЕМЕНЕМ
+let idleTimer;
+let idleMessages = [
+  "PROCESS 66: pain response still active.",
+  "ERROR // memory bleed detected.",
+  "You are not supposed to be here.",
+  "Observer presence confirmed.",
+  "This system remembers you.",
+  "Body reference: NULL.",
+  "Why are you watching?",
+  "Subject still believes this is real."
+];
 
-function print(text = "") {
-  terminal.innerText += text + "\n";
-  terminal.scrollTop = terminal.scrollHeight;
+function type(text, delay = 20) {
+  return new Promise(resolve => {
+    let i = 0;
+    let interval = setInterval(() => {
+      terminal.innerHTML += text[i];
+      i++;
+      if (i >= text.length) {
+        clearInterval(interval);
+        terminal.innerHTML += "\n";
+        resolve();
+      }
+    }, delay);
+  });
 }
 
-// ===== STARTUP =====
-print("CHEMIDREAM INTERNAL INTERFACE");
-print("ACCESS NODE: UNKNOWN");
-print("");
-print("> initializing display...");
-print("> synchronizing consciousness core...");
-print("> ERROR // unauthorized observer detected");
-print("");
-print("SYSTEM ONLINE.");
-print("");
-print("TYPE 'HELP'");
+async function bootSequence() {
+  const lines = [
+    "CHEMIDREAM INTERNAL INTERFACE",
+    "ACCESS NODE: UNKNOWN",
+    "",
+    "> initializing display...",
+    "> synchronizing consciousness core...",
+    "> ERROR // unauthorized observer detected",
+    "",
+    "SYSTEM ONLINE.",
+    "",
+    "TYPE 'HELP'"
+  ];
 
-// ===== COMMAND HANDLER =====
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter") {
-    const cmd = input.value.trim().toLowerCase();
-    print("> " + cmd);
-    input.value = "";
+  for (let line of lines) {
+    await type(line);
+  }
+}
 
-    handleCommand(cmd);
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    const msg = idleMessages[Math.floor(Math.random() * idleMessages.length)];
+    terminal.innerHTML += "\n" + msg + "\n";
+    scrollDown();
+    resetIdleTimer();
+  }, 15000); // 15 секунд бездействия
+}
+
+function scrollDown() {
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+document.addEventListener("keydown", async (e) => {
+  if (boot.style.display !== "none") {
+    boot.style.display = "none";
+    monitor.style.display = "block";
+    await bootSequence();
+    resetIdleTimer();
+    return;
+  }
+
+  resetIdleTimer();
+
+  if (e.key === "Backspace") {
+    input.textContent = input.textContent.slice(0, -1);
+  } else if (e.key === "Enter") {
+    const command = input.textContent.trim().toLowerCase();
+    terminal.innerHTML += `\n> ${command}\n`;
+    handleCommand(command);
+    input.textContent = "";
+  } else if (e.key.length === 1) {
+    input.textContent += e.key;
   }
 });
 
 function handleCommand(cmd) {
+  switch (cmd) {
+    case "help":
+      terminal.innerHTML +=
+        "AVAILABLE COMMANDS:\n" +
+        "- help\n" +
+        "- status\n" +
+        "- observe\n" +
+        "- exit\n";
+      break;
 
-  // ----- BASIC -----
-  if (cmd === "help") {
-    print("AVAILABLE COMMANDS:");
-    print("- HELP");
-    print("- STATUS");
-    print("- LOGIN");
-    if (accessGranted) {
-      print("- LS");
-      print("- DOWNLOAD [file]");
-    }
+    case "status":
+      terminal.innerHTML +=
+        "SUBJECT: VENIAMIN\n" +
+        "BODY: NOT FOUND\n" +
+        "STATE: AWAKE\n";
+      break;
+
+    case "observe":
+      terminal.innerHTML +=
+        "OBSERVATION NOT RECOMMENDED.\n" +
+        "PAIN RESPONSE INCREASING.\n";
+      break;
+
+    case "exit":
+      terminal.innerHTML += "EXIT DENIED.\n";
+      break;
+
+    default:
+      terminal.innerHTML += "UNKNOWN COMMAND.\n";
   }
 
-  else if (cmd === "status") {
-    if (!accessGranted) {
-      print("ACCESS RESTRICTED");
-    } else {
-      print("SUBJECT: VENIAMIN");
-      print("STATE: CONSCIOUS");
-      print("BODY: NOT FOUND");
-      print("PAIN RESPONSE: ACTIVE");
-      if (phase >= 2) {
-        print("CONTAINMENT: UNSTABLE");
-      }
-    }
-  }
-
-  // ----- LOGIN -----
-  else if (cmd.startsWith("login")) {
-    const pass = cmd.split(" ")[1];
-
-    if (!pass) {
-      print("ENTER PASSCODE");
-      return;
-    }
-
-    // <<< ЗАМЕНИ ПАРОЛЬ ЗДЕСЬ >>>
-    if (pass === "wake") {
-      accessGranted = true;
-      print("ACCESS GRANTED");
-      print("WELCOME, OBSERVER");
-    } else {
-      print("ACCESS DENIED");
-    }
-  }
-
-  // ----- FILE SYSTEM -----
-  else if (cmd === "ls") {
-    if (!accessGranted) {
-      print("ACCESS RESTRICTED");
-    } else {
-      print("/data/");
-      print("  logs.txt");
-      print("  fragment_01.bin");
-      if (phase >= 2) {
-        print("  fragment_02.bin");
-      }
-    }
-  }
-
-  else if (cmd.startsWith("download")) {
-    if (!accessGranted) {
-      print("ACCESS RESTRICTED");
-      return;
-    }
-
-    const file = cmd.split(" ")[1];
-    if (!file) {
-      print("SPECIFY FILE");
-      return;
-    }
-
-    print("DOWNLOADING: " + file);
-    // Файлы ты добавишь позже в папку /data
-    window.location.href = "data/" + file;
-  }
-
-  // ----- SECRET RESPONSES -----
-  else if (cmd === "whoami") {
-    print("YOU ARE OBSERVING.");
-    print("I AM CONTAINED.");
-  }
-
-  else if (cmd === "wake") {
-    print("...");
-    print("YOU SHOULD NOT HAVE DONE THAT.");
-  }
-
-  // ----- UNKNOWN -----
-  else {
-    print("UNKNOWN COMMAND");
-  }
+  scrollDown();
 }
-
-// ===== IDLE EVENT =====
-let idleTimer;
-document.addEventListener("keydown", () => {
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    print("");
-    print("ARE YOU STILL THERE?");
-  }, 30000);
-});
 </script>
 
 </body>
