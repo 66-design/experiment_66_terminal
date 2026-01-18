@@ -12,92 +12,58 @@ html, body {
   height: 100%;
   background: black;
   font-family: monospace;
-  color: #9cff9c;
   overflow: hidden;
 }
 
-/* ===== BOOT SCREEN ===== */
-#boot-screen {
-  position: fixed;
-  inset: 0;
-  background: black;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  animation: flicker 1.5s infinite;
-}
-
-@keyframes flicker {
-  0%,100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-/* ===== MONITOR BACKGROUND (optional image) ===== */
+/* BACKGROUND MONITOR */
 #background {
   position: fixed;
   inset: 0;
-  background: url("assets/monitor.jpg") center center no-repeat;
-  background-size: cover;
-  z-index: -2;
+  background: url("assets/monitor.png") center center / cover no-repeat;
+  filter: brightness(0.6) contrast(1.2);
 }
 
-/* ===== SCREEN NOISE ===== */
-body::after {
-  content: "";
+/* SCREEN NOISE */
+#noise {
   position: fixed;
   inset: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255,255,255,0.03),
-    rgba(255,255,255,0.03) 1px,
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255,255,255,0.02),
+    rgba(255,255,255,0.02) 1px,
     transparent 1px,
-    transparent 3px
+    transparent 2px
   );
+  animation: noise 0.15s infinite;
   pointer-events: none;
-  z-index: 10;
 }
 
-/* ===== TERMINAL ===== */
-.monitor {
-  position: fixed;
-  inset: 0;
-  padding: 40px;
-  display: none;
+@keyframes noise {
+  0% { opacity: 0.15; }
+  50% { opacity: 0.25; }
+  100% { opacity: 0.15; }
 }
 
+/* TERMINAL */
 #terminal {
-  white-space: pre-wrap;
-  line-height: 1.4;
-}
-
-#input-line {
-  display: flex;
-}
-
-#prompt {
-  margin-right: 8px;
-}
-
-#input {
-  outline: none;
-  border: none;
-  background: transparent;
+  position: absolute;
+  inset: 8%;
   color: #9cff9c;
-  flex: 1;
+  font-size: 16px;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  text-shadow: 0 0 6px #00ff66;
 }
 
-/* Cursor blink */
+/* CURSOR */
 .cursor {
   display: inline-block;
   width: 10px;
   background: #9cff9c;
-  margin-left: 2px;
-  animation: blink 1s steps(2) infinite;
+  animation: blink 1s steps(1) infinite;
 }
 
 @keyframes blink {
-  0% { opacity: 1; }
   50% { opacity: 0; }
 }
 </style>
@@ -106,46 +72,37 @@ body::after {
 <body>
 
 <div id="background"></div>
+<div id="noise"></div>
+<div id="terminal"></div>
 
-<div id="boot-screen">
-  PRESS ANY KEY TO CONTINUE
-</div>
-
-<div class="monitor">
-  <div id="terminal"></div>
-  <div id="input-line">
-    <span id="prompt">&gt;</span>
-    <span id="input"></span><span class="cursor"></span>
-  </div>
-</div>
+<audio id="hum" src="assets/hum.mp3" loop></audio>
 
 <script>
 const terminal = document.getElementById("terminal");
-const input = document.getElementById("input");
-const boot = document.getElementById("boot-screen");
-const monitor = document.querySelector(".monitor");
+const hum = document.getElementById("hum");
 
-let idleTimer;
-let idleMessages = [
-  "PROCESS 66: pain response still active.",
-  "ERROR // memory bleed detected.",
-  "You are not supposed to be here.",
-  "Observer presence confirmed.",
-  "This system remembers you.",
-  "Body reference: NULL.",
-  "Why are you watching?",
-  "Subject still believes this is real."
+let activated = false;
+let lastInputTime = Date.now();
+
+const idleMessages = [
+  ">> pain signal detected",
+  ">> sensory feedback loop unstable",
+  ">> this body is not yours",
+  ">> why are you watching",
+  ">> I remember hands",
+  ">> ERROR: memory bleed",
+  ">> I AM STILL HERE"
 ];
 
-function type(text, delay = 20) {
+function type(text, delay = 30) {
   return new Promise(resolve => {
     let i = 0;
-    let interval = setInterval(() => {
+    const interval = setInterval(() => {
       terminal.innerHTML += text[i];
+      terminal.scrollTop = terminal.scrollHeight;
       i++;
       if (i >= text.length) {
         clearInterval(interval);
-        terminal.innerHTML += "\n";
         resolve();
       }
     }, delay);
@@ -153,95 +110,48 @@ function type(text, delay = 20) {
 }
 
 async function bootSequence() {
-  const lines = [
-    "CHEMIDREAM INTERNAL INTERFACE",
-    "ACCESS NODE: UNKNOWN",
-    "",
-    "> initializing display...",
-    "> synchronizing consciousness core...",
-    "> ERROR // unauthorized observer detected",
-    "",
-    "SYSTEM ONLINE.",
-    "",
-    "TYPE 'HELP'"
-  ];
-
-  for (let line of lines) {
-    await type(line);
-  }
+  await type("PRESS ANY KEY TO CONTINUE\n\n", 40);
+  terminal.innerHTML += "<span class='cursor'></span>";
 }
 
-function resetIdleTimer() {
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
+async function intrusion() {
+  terminal.innerHTML = "";
+  hum.volume = 0.4;
+  hum.play();
+
+  await type("CHEMIDREAM INTERNAL INTERFACE\n");
+  await type("ACCESS NODE: UNKNOWN\n\n");
+  await type("> intrusion detected\n");
+  await type("> initializing consciousness core...\n");
+  await type("> ERROR // unauthorized observer\n\n");
+  await type("SYSTEM ONLINE\n\n");
+  await type("TYPE 'HELP'\n\n> ");
+  terminal.innerHTML += "<span class='cursor'></span>";
+}
+
+function randomIdleMessage() {
+  if (!activated) return;
+  const now = Date.now();
+  if (now - lastInputTime > 12000) {
     const msg = idleMessages[Math.floor(Math.random() * idleMessages.length)];
-    terminal.innerHTML += "\n" + msg + "\n";
-    scrollDown();
-    resetIdleTimer();
-  }, 15000); // 15 секунд бездействия
-}
-
-function scrollDown() {
-  window.scrollTo(0, document.body.scrollHeight);
-}
-
-document.addEventListener("keydown", async (e) => {
-  if (boot.style.display !== "none") {
-    boot.style.display = "none";
-    monitor.style.display = "block";
-    await bootSequence();
-    resetIdleTimer();
-    return;
+    terminal.innerHTML += "\n" + msg + "\n> ";
+    lastInputTime = now;
+    terminal.scrollTop = terminal.scrollHeight;
   }
+}
 
-  resetIdleTimer();
+document.addEventListener("keydown", () => {
+  lastInputTime = Date.now();
 
-  if (e.key === "Backspace") {
-    input.textContent = input.textContent.slice(0, -1);
-  } else if (e.key === "Enter") {
-    const command = input.textContent.trim().toLowerCase();
-    terminal.innerHTML += `\n> ${command}\n`;
-    handleCommand(command);
-    input.textContent = "";
-  } else if (e.key.length === 1) {
-    input.textContent += e.key;
+  if (!activated) {
+    activated = true;
+    intrusion();
   }
 });
 
-function handleCommand(cmd) {
-  switch (cmd) {
-    case "help":
-      terminal.innerHTML +=
-        "AVAILABLE COMMANDS:\n" +
-        "- help\n" +
-        "- status\n" +
-        "- observe\n" +
-        "- exit\n";
-      break;
+setInterval(randomIdleMessage, 4000);
 
-    case "status":
-      terminal.innerHTML +=
-        "SUBJECT: VENIAMIN\n" +
-        "BODY: NOT FOUND\n" +
-        "STATE: AWAKE\n";
-      break;
-
-    case "observe":
-      terminal.innerHTML +=
-        "OBSERVATION NOT RECOMMENDED.\n" +
-        "PAIN RESPONSE INCREASING.\n";
-      break;
-
-    case "exit":
-      terminal.innerHTML += "EXIT DENIED.\n";
-      break;
-
-    default:
-      terminal.innerHTML += "UNKNOWN COMMAND.\n";
-  }
-
-  scrollDown();
-}
+bootSequence();
 </script>
 
 </body>
