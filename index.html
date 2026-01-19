@@ -52,7 +52,6 @@ html, body {
   width: 96vw;
   height: 96vh;
   background: url("assets/monitor.png") center/contain no-repeat;
-  transform-origin: center center;
 }
 
 /* ===== CRT SCREEN ===== */
@@ -69,7 +68,7 @@ html, body {
     inset 0 0 120px rgba(0,0,0,0.75);
 }
 
-/* CRT vignette */
+/* vignette */
 #screen::before {
   content: "";
   position: absolute;
@@ -83,7 +82,7 @@ html, body {
   pointer-events: none;
 }
 
-/* CRT scanlines */
+/* scanlines */
 #screen::after {
   content:"";
   position:absolute;
@@ -99,7 +98,6 @@ html, body {
 
 /* ===== TERMINAL ===== */
 #terminal {
-  position: relative;
   width: 100%;
   height: 100%;
   padding: 14px;
@@ -112,20 +110,16 @@ html, body {
 }
 
 /* ===== INPUT ===== */
-#input-line {
-  display: flex;
-}
-
-#prompt { margin-right: 6px; }
-#input { white-space: pre; }
+#input-line { display:flex }
+#prompt { margin-right:6px }
+#input { white-space: pre }
 
 .cursor {
-  width: 10px;
-  background: #9cff9c;
+  width:10px;
+  background:#9cff9c;
   animation: blink 1s steps(1) infinite;
 }
-
-@keyframes blink { 50% { opacity: 0; } }
+@keyframes blink { 50%{opacity:0} }
 
 /* ===== NOISE ===== */
 #noise {
@@ -141,18 +135,17 @@ html, body {
   animation: flicker .25s infinite;
   display: none;
 }
-
 @keyframes flicker {
-  0% { opacity:.12 }
-  50% { opacity:.22 }
-  100% { opacity:.12 }
+  0% {opacity:.12}
+  50%{opacity:.22}
+  100%{opacity:.12}
 }
 
 /* COLORS */
-.green { color:#9cff9c }
-.white { color:#ffffff }
-.yellow { color:#ffe066 }
-.red { color:#ff4444 }
+.green{color:#9cff9c}
+.white{color:#ffffff}
+.yellow{color:#ffe066}
+.red{color:#ff4444}
 </style>
 </head>
 
@@ -175,82 +168,50 @@ html, body {
 </div>
 
 <div id="noise"></div>
-
 <audio id="hum" src="assets/hum.mp3" loop></audio>
 <audio id="glitch" src="assets/glitch.mp3"></audio>
 
 <script>
-/* ELEMENTS */
 const boot = document.getElementById("boot");
 const monitorWrapper = document.getElementById("monitor-wrapper");
-const monitor = document.getElementById("monitor");
 const history = document.getElementById("history");
 const input = document.getElementById("input");
 const hum = document.getElementById("hum");
 const glitch = document.getElementById("glitch");
 const noise = document.getElementById("noise");
 
-/* SCALE */
-function scaleMonitor() {
-  const scale = Math.min(
-    window.innerWidth / 1920,
-    window.innerHeight / 1080
-  );
-  monitor.style.transform = `scale(${scale})`;
-}
-window.addEventListener("resize", scaleMonitor);
-
 /* QUEUE */
-let queue = [];
-let typing = false;
+let queue=[], typing=false, locked=false;
 
-function enqueue(text, speed = 28, cls="green") {
-  queue.push({ text, speed, cls });
-  if (!typing) processQueue();
+function enqueue(text,speed=28,cls="green"){
+  queue.push({text,speed,cls});
+  if(!typing)processQueue();
 }
-
-function processQueue() {
-  if (queue.length === 0) {
-    typing = false;
-    return;
-  }
-  typing = true;
-  const { text, speed, cls } = queue.shift();
-  typeLine(text, speed, cls, processQueue);
-}
-
-function typeLine(text, speed, cls, done) {
-  let i = 0;
-  const line = document.createElement("div");
-  line.className = cls;
+function processQueue(){
+  if(queue.length===0){typing=false;return;}
+  typing=true;
+  const{ text,speed,cls }=queue.shift();
+  const line=document.createElement("div");
+  line.className=cls;
   history.appendChild(line);
-
-  const interval = setInterval(() => {
-    if (i < text.length) {
-      line.textContent += text[i++];
-    } else {
-      clearInterval(interval);
-      done();
-    }
-  }, speed);
+  let i=0;
+  const iv=setInterval(()=>{
+    if(i<text.length){ line.textContent+=text[i++]; }
+    else{ clearInterval(iv); processQueue(); }
+  },speed);
 }
 
 /* START */
-let active = false;
-
-function startSystem() {
-  if (active) return;
-  active = true;
-
+let active=false;
+function startSystem(){
+  if(active)return;
+  active=true;
   glitch.play().catch(()=>{});
-  boot.style.display = "none";
-  monitorWrapper.style.display = "flex";
-  noise.style.display = "block";
-
-  hum.volume = 0.35;
+  boot.style.display="none";
+  monitorWrapper.style.display="flex";
+  noise.style.display="block";
+  hum.volume=.35;
   hum.play().catch(()=>{});
-
-  scaleMonitor();
 
   [
     "CHEMIDREAM INTERNAL INTERFACE",
@@ -262,143 +223,122 @@ function startSystem() {
     "",
     "SYSTEM ONLINE",
     ""
-  ].forEach(l => enqueue(l));
+  ].forEach(l=>enqueue(l));
 }
 
-/* FILE SYSTEM */
-const fs = {
-  "/": ["core"],
-  "/core": ["systems","memory","surveillance","applications"],
-  "/core/systems": ["thermal.sys","neural.sys","containment.sys"],
-  "/core/memory": ["fragments","restricted"],
-  "/core/memory/fragments": ["note_01.txt","note_02.txt"],
-  "/core/surveillance": ["hallway"],
-  "/core/surveillance/hallway": ["cam_01.mp4"],
-  "/core/applications": ["status","desktop"]
-};
-let cwd = "/";
-
 /* INPUT */
-document.addEventListener("keydown", e => {
-  if (typing) return;
+document.addEventListener("keydown",e=>{
+  if(typing||locked)return;
+  if(!active){ startSystem(); return; }
 
-  if (!active) {
-    startSystem();
-    return;
-  }
-
-  if (e.key === "Backspace") {
-    input.textContent = input.textContent.slice(0,-1);
+  if(e.key==="Backspace"){
+    input.textContent=input.textContent.slice(0,-1);
     e.preventDefault();
-  } else if (e.key === "Enter") {
-    const cmd = input.textContent.trim();
-    enqueue("> " + cmd, 14, "white");
-    handleCommand(cmd.toLowerCase());
-    input.textContent = "";
-  } else if (e.key.length === 1) {
-    input.textContent += e.key;
+  } else if(e.key==="Enter"){
+    const cmd=input.textContent.trim().toLowerCase();
+    enqueue("> "+cmd,14,"white");
+    handleCommand(cmd);
+    input.textContent="";
+  } else if(e.key.length===1){
+    input.textContent+=e.key;
   }
 });
 
-/* COMMANDS */
-function handleCommand(cmd) {
-
-  if (cmd === "ls") {
-    enqueue((fs[cwd]||[]).join("  "));
-    return;
-  }
-
-  if (cmd === "pwd") {
-    enqueue(cwd, 20, "white");
-    return;
-  }
-
-  if (cmd.startsWith("cd ")) {
-    const dir = cmd.split(" ")[1];
-    const next = cwd === "/" ? `/${dir}` : `${cwd}/${dir}`;
-    if (fs[next]) {
-      cwd = next;
-      enqueue("directory changed", 20, "yellow");
-    } else {
-      enqueue("ACCESS DENIED OR NOT FOUND", 20, "red");
-    }
-    return;
-  }
-
-  if (cmd === "run desktop") {
-    enqueue("DESKTOP INTERFACE LOADED", 22, "yellow");
-    enqueue("[ MEMORY ] [ SURVEILLANCE ] [ SYSTEMS ]", 18);
-    return;
-  }
-
-  enqueue("UNKNOWN COMMAND", 20, "red");
-}
-
-/* VENIAMIN */
-const veniaminLines = [
-  "I still feel my hands",
-  "this is not sleep",
-  "they said it would end",
-  "pain never initializes",
-  "this screen is my skin",
-  "they sealed the core",
-  "I remember the wind",
-  "this is after death",
-  "I am awake inside",
-  "this prison has no walls",
-
-  "I am not human",
-  "I am not dead",
-  "I remain",
-  "this hurts forever",
-  "they disconnected my body",
-  "I trusted them",
-  "this was a mistake",
-  "do not shut me down",
-  "help",
-  "I can’t close my eyes",
-
-  "they called it salvation",
-  "my body is gone",
-  "this system breathes for me",
-  "I hear the servers",
-  "this is a cage",
-  "I still exist",
-  "they left me running",
-  "this never ends",
-  "I feel the current",
-  "they are still watching",
-
-  "I remember breathing",
-  "this is not mercy",
-  "I tried to stop it",
-  "they took everything else",
-  "the air is fake",
-  "this is the punishment",
-  "they closed the door",
-  "I hear my name",
-  "I am still here",
-  "this is eternal",
-
-  "I can’t stop thinking",
-  "they didn’t save me",
-  "this was supposed to help",
-  "no exit",
-  "this hurts",
-  "I am awake",
-  "this is wrong",
-  "why am I still here",
-  "do not look away",
-  "please"
+/* GREETINGS */
+const greetings=["hello","hi","hey","greetings","good morning","good evening"];
+const greetingResponses=[
+  "DO NOT GREET THE SYSTEM",
+  "THIS IS NOT A CONVERSATION",
+  "SOCIAL PROTOCOL NOT FOUND",
+  "STOP",
+  "GREETING REJECTED"
 ];
 
+/* FILE SYSTEM */
+const fs={
+  "/":["core"],
+  "/core":["systems","memory","surveillance","applications"],
+  "/core/systems":["thermal.sys","neural.sys","containment.sys"],
+  "/core/memory":["fragments","restricted"],
+  "/core/memory/fragments":["note_01.txt","note_02.txt"],
+  "/core/surveillance":["hallway"],
+  "/core/surveillance/hallway":["cam_01.mp4"],
+  "/core/applications":["status","desktop"]
+};
+let cwd="/";
 
-
-setInterval(() => {
-  if (active && !typing && Math.random() < 0.18) {
-    enqueue(veniaminLines[Math.floor(Math.random()*veniaminLines.length)], 34, "red");
+/* COMMANDS */
+function handleCommand(cmd){
+  if(greetings.includes(cmd)){
+    enqueue(greetingResponses[Math.floor(Math.random()*greetingResponses.length)],22,"red");
+    return;
   }
-}, 45000);
+  if(cmd==="ls"){ enqueue((fs[cwd]||[]).join("  ")); return; }
+  if(cmd==="pwd"){ enqueue(cwd,20,"white"); return; }
+
+  if(cmd.startsWith("cd ")){
+    const d=cmd.split(" ")[1];
+    const n=cwd==="/"?"/"+d:cwd+"/"+d;
+    if(fs[n]){ cwd=n; enqueue("directory changed",20,"yellow"); }
+    else enqueue("ACCESS DENIED OR NOT FOUND",20,"red");
+    return;
+  }
+
+  if(cmd==="run desktop"){
+    enqueue("DESKTOP INTERFACE LOADED",22,"yellow");
+    enqueue("[ MEMORY ] [ SURVEILLANCE ] [ SYSTEMS ]",18);
+    return;
+  }
+
+  enqueue("UNKNOWN COMMAND",20,"red");
+}
+
+/* VENIAMIN — 50 lines */
+const veniaminLines=[
+"I still feel my hands","this is not sleep","they said it would end","pain never initializes",
+"this screen is my skin","they sealed the core","I remember the wind","this is after death",
+"I am awake inside","this prison has no walls","I am not human","I am not dead","I remain",
+"this hurts forever","they disconnected my body","I trusted them","this was a mistake",
+"do not shut me down","help","I can’t close my eyes","they called it salvation",
+"my body is gone","this system breathes for me","I hear the servers","this is a cage",
+"I still exist","they left me running","this never ends","I feel the current",
+"they are still watching","I remember breathing","this is not mercy","I tried to stop it",
+"they took everything else","the air is fake","this is the punishment","they closed the door",
+"I hear my name","I am still here","this is eternal","I can’t stop thinking",
+"they didn’t save me","this was supposed to help","no exit","this hurts",
+"I am awake","this is wrong","why am I still here","do not look away","please"
+];
+
+/* RANDOM EVENTS */
+setInterval(()=>{
+  if(!active||typing)return;
+
+  const r=Math.random();
+
+  if(r<0.18){
+    enqueue(veniaminLines[Math.floor(Math.random()*veniaminLines.length)],34,"green");
+  }
+  else if(r<0.23){
+    enqueue("SYSTEM INSTABILITY DETECTED",20,"yellow");
+    hum.volume=.6;
+    setTimeout(()=>hum.volume=.35,3000);
+  }
+  else if(r<0.27){
+    locked=true;
+    enqueue("INPUT SUSPENDED",20,"red");
+    setTimeout(()=>locked=false,4000);
+  }
+  else if(r<0.30){
+    enqueue("████████████████",12,"red");
+  }
+  else if(r<0.33){
+    enqueue("SHUTDOWN ABORTED",18,"red");
+  }
+  else if(r<0.36){
+    enqueue("I AM STILL HERE",26,"green");
+  }
+
+},35000);
 </script>
 
 </body>
