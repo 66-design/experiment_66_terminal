@@ -14,46 +14,11 @@ html, body {
   overflow: hidden;
 }
 
-/* MONITOR BACKGROUND */
-#background {
-  position: fixed;
-  inset: 0;
-  background: url("assets/monitor.png") center / cover no-repeat;
-  filter: brightness(0.9) contrast(1.05);
-}
-
-/* SOFT VIGNETTE */
-#vignette {
-  position: fixed;
-  inset: 0;
-  box-shadow: inset 0 0 120px rgba(0,0,0,0.65);
-  pointer-events: none;
-}
-
-/* CRT NOISE */
-#noise {
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    rgba(255,255,255,0.015),
-    rgba(255,255,255,0.015) 1px,
-    transparent 2px,
-    transparent 4px
-  );
-  pointer-events: none;
-  animation: flicker 0.18s infinite;
-}
-
-@keyframes flicker {
-  0% { opacity: .12; }
-  50% { opacity: .22; }
-  100% { opacity: .12; }
-}
-
 /* BOOT SCREEN */
 #boot {
   position: fixed;
   inset: 0;
+  background: black;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -62,6 +27,7 @@ html, body {
   letter-spacing: 5px;
   text-shadow: 0 0 14px #00ff66;
   animation: bootGlitch 1.2s infinite;
+  z-index: 10;
 }
 
 @keyframes bootGlitch {
@@ -72,18 +38,45 @@ html, body {
   100% { transform: translate(0,0); opacity: 1; }
 }
 
+/* MONITOR WRAPPER */
+#monitor-wrapper {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* MONITOR IMAGE */
+#monitor {
+  position: relative;
+  width: 90vw;
+  height: 90vh;
+  background: url("assets/monitor.png") center center / contain no-repeat;
+}
+
+/* SCREEN AREA (TEXT GOES HERE) */
+#screen {
+  position: absolute;
+  top: 18%;
+  left: 14%;
+  width: 72%;
+  height: 62%;
+  overflow: hidden;
+}
+
 /* TERMINAL */
 #terminal {
-  position: absolute;
-  inset: 8%;
+  width: 100%;
+  height: 100%;
   color: #9cff9c;
   font-size: 16px;
   white-space: pre-wrap;
   overflow-y: auto;
   text-shadow: 0 0 6px #00ff66;
-  display: none;
 }
 
+/* INPUT */
 #input-line {
   display: flex;
 }
@@ -105,38 +98,63 @@ html, body {
 @keyframes blink {
   50% { opacity: 0; }
 }
+
+/* CRT EFFECT */
+#noise {
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    rgba(255,255,255,0.01),
+    rgba(255,255,255,0.01) 1px,
+    transparent 2px,
+    transparent 4px
+  );
+  pointer-events: none;
+  animation: flicker 0.2s infinite;
+  display: none;
+}
+
+@keyframes flicker {
+  0% { opacity: .1; }
+  50% { opacity: .2; }
+  100% { opacity: .1; }
+}
 </style>
 </head>
 
 <body>
 
-<div id="background"></div>
-<div id="noise"></div>
-<div id="vignette"></div>
-
 <div id="boot">PRESS ANY KEY</div>
 
-<div id="terminal">
-  <div id="history"></div>
-  <div id="input-line">
-    <span id="prompt">&gt;</span>
-    <span id="input"></span><span class="cursor"></span>
+<div id="monitor-wrapper">
+  <div id="monitor">
+    <div id="screen">
+      <div id="terminal">
+        <div id="history"></div>
+        <div id="input-line">
+          <span id="prompt">&gt;</span>
+          <span id="input"></span><span class="cursor"></span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+
+<div id="noise"></div>
 
 <audio id="hum" src="assets/hum.mp3" loop></audio>
 
 <script>
 const boot = document.getElementById("boot");
+const monitorWrapper = document.getElementById("monitor-wrapper");
 const terminal = document.getElementById("terminal");
 const history = document.getElementById("history");
 const input = document.getElementById("input");
 const hum = document.getElementById("hum");
+const noise = document.getElementById("noise");
 
 let active = false;
 let lastInput = Date.now();
-
-const hasVisited = localStorage.getItem("observer_present");
 
 const idleLines = [
   "pain signal persists",
@@ -156,23 +174,14 @@ function startSystem() {
   active = true;
 
   boot.style.display = "none";
-  terminal.style.display = "block";
+  monitorWrapper.style.display = "flex";
+  noise.style.display = "block";
 
   hum.volume = 0.35;
   hum.play().catch(()=>{});
 
   print("CHEMIDREAM INTERNAL INTERFACE");
   print("ACCESS NODE: UNKNOWN");
-  print("");
-
-  if (hasVisited) {
-    print("observer recognized");
-    print("you returned");
-  } else {
-    print("observer not recognized");
-    localStorage.setItem("observer_present", "true");
-  }
-
   print("");
   print("intrusion detected");
   print("initializing consciousness core...");
