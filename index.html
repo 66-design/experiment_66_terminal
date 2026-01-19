@@ -69,7 +69,6 @@ html, body {
     inset 0 0 120px rgba(0,0,0,0.75);
 }
 
-/* Рассеивание + выпуклость */
 #screen::before {
   content: "";
   position: absolute;
@@ -93,17 +92,16 @@ html, body {
   padding: 14px;
   color: #9cff9c;
   font-size: 16px;
-  line-height: 1.45; /* 👈 расстояние между строками */
+  line-height: 1.45;
   white-space: pre-wrap;
   overflow-y: auto;
   text-shadow: 0 0 6px #00ff66;
 }
 
-/* ===== INPUT ===== */
-#input-line {
-  display: flex;
-}
+#history div { margin-bottom: 6px; }
 
+/* ===== INPUT ===== */
+#input-line { display: flex; }
 #prompt { margin-right: 6px; }
 #input { white-space: pre; }
 
@@ -171,24 +169,22 @@ const noise = document.getElementById("noise");
 let queue = [];
 let typing = false;
 
-function enqueue(text, speed = 28) {
-  queue.push({ text, speed });
+function enqueue(text, speed = 28, color = null) {
+  queue.push({ text, speed, color });
   if (!typing) processQueue();
 }
 
 function processQueue() {
-  if (queue.length === 0) {
-    typing = false;
-    return;
-  }
+  if (queue.length === 0) { typing = false; return; }
   typing = true;
-  const { text, speed } = queue.shift();
-  typeLine(text, speed, processQueue);
+  const { text, speed, color } = queue.shift();
+  typeLine(text, speed, color, processQueue);
 }
 
-function typeLine(text, speed, done) {
+function typeLine(text, speed, color, done) {
   let i = 0;
   const line = document.createElement("div");
+  if (color) line.style.color = color;
   history.appendChild(line);
 
   const interval = setInterval(() => {
@@ -228,6 +224,48 @@ function startSystem() {
   ].forEach(l => enqueue(l));
 }
 
+/* ===== FILE SYSTEM ===== */
+let clearance = "GUEST";
+let path = ["core"];
+
+const fs = {
+  core: {
+    systems: {
+      thermal: { type: "file", color: "#ffff88", content: "CORE TEMP: 41.6C\nCOOLING: ACTIVE" },
+      neural: { type: "file", color: "#ffffff", content: "NEURAL NOISE DETECTED\nAWARENESS: HIGH" },
+      integrity: { type: "file", color: "#ff5555", content: "DATA INTEGRITY: FAILING" }
+    },
+    memory: {
+      fragments: {
+        "note_01.txt": { type: "file", content: "I remember my hands" },
+        "note_02.txt": { type: "file", content: "Pain has no edges here" }
+      },
+      restricted: {
+        _clearance: "OBSERVER",
+        "truth.log": { type: "file", color: "#ff4444", content: "BODY LOST. CORE PRESERVED." }
+      }
+    },
+    surveillance: {
+      hallway: {
+        "cam_01.mp4": { type: "download", path: "assets/files/cam_01.mp4" }
+      }
+    },
+    applications: {
+      status: { type: "app", run: () => {
+        enqueue("SUBJECT: ACTIVE", 24, "#ffffff");
+        enqueue("BODY: NOT PRESENT", 24, "#ff5555");
+        enqueue("STATE: CONTAINED", 24, "#ffff88");
+      }}
+    }
+  }
+};
+
+function getDir() {
+  let d = fs;
+  for (let p of path) d = d[p];
+  return d;
+}
+
 /* ===== INPUT ===== */
 document.addEventListener("keydown", e => {
   if (typing) return;
@@ -242,7 +280,7 @@ document.addEventListener("keydown", e => {
     e.preventDefault();
   } else if (e.key === "Enter") {
     const cmd = input.textContent.trim().toLowerCase();
-    enqueue("> " + cmd);
+    enqueue("> " + cmd, 18);
     handleCommand(cmd);
     input.textContent = "";
   } else if (e.key.length === 1) {
@@ -251,50 +289,69 @@ document.addEventListener("keydown", e => {
 });
 
 /* ===== COMMANDS ===== */
-const greetings = ["hello","hi","hey","greetings","good morning","good evening"];
-const greetingResponses = [
-  "DO NOT GREET THE SYSTEM",
-  "THIS IS NOT A CONVERSATION",
-  "SOCIAL PROTOCOL NOT FOUND",
-  "STOP",
-  "GREETING REJECTED"
-];
-
-let awaitingPassword = false;
-
 function handleCommand(cmd) {
+  const parts = cmd.split(" ");
+  const dir = getDir();
 
-  if (greetings.includes(cmd)) {
-    enqueue(greetingResponses[Math.floor(Math.random()*greetingResponses.length)], 22);
+  if (cmd === "ls") {
+    Object.keys(dir).filter(k => !k.startsWith("_")).forEach(k => enqueue(k, 20, "#9cff9c"));
     return;
   }
 
-  if (awaitingPassword) {
-    if (cmd === "veniamin") {
-      enqueue("ACCESS GRANTED");
-      downloadFile();
-    } else {
-      enqueue("ACCESS DENIED");
+  if (cmd === "pwd") {
+    enqueue("/" + path.join("/"), 20, "#ffffff");
+    return;
+  }
+
+  if (parts[0] === "cd") {
+    const target = parts[1];
+    if (!dir[target] || dir[target].type === "file") {
+      enqueue("DIRECTORY NOT FOUND", 22, "#ff5555");
+      return;
     }
-    awaitingPassword = false;
+    if (dir[target]._clearance && clearance === "GUEST") {
+      enqueue("INSUFFICIENT CLEARANCE", 22, "#ff5555");
+      return;
+    }
+    path.push(target);
     return;
   }
 
-  if (cmd === "extract memory_66") {
-    enqueue("PASSWORD REQUIRED");
-    awaitingPassword = true;
+  if (parts[0] === "cat") {
+    const f = dir[parts[1]];
+    if (!f || f.type !== "file") {
+      enqueue("FILE NOT FOUND", 22, "#ff5555");
+      return;
+    }
+    enqueue(f.content, 26, f.color || "#ffffff");
     return;
   }
 
-  enqueue("UNKNOWN COMMAND");
-}
+  if (parts[0] === "open") {
+    const f = dir[parts[1]];
+    if (f && f.type === "download") {
+      const a = document.createElement("a");
+      a.href = f.path;
+      a.download = "";
+      a.click();
+      enqueue("DOWNLOAD STARTED", 22, "#ffff88");
+      return;
+    }
+    enqueue("UNSUPPORTED FILE", 22, "#ff5555");
+    return;
+  }
 
-/* ===== DOWNLOAD ===== */
-function downloadFile() {
-  const a = document.createElement("a");
-  a.href = "assets/files/memory_66.zip";
-  a.download = "memory_66.zip";
-  a.click();
+  if (parts[0] === "run") {
+    const app = dir[parts[1]];
+    if (app && app.type === "app") {
+      app.run();
+      return;
+    }
+    enqueue("APPLICATION NOT FOUND", 22, "#ff5555");
+    return;
+  }
+
+  enqueue("UNKNOWN COMMAND", 22, "#ff5555");
 }
 
 /* ===== VENIAMIN ===== */
@@ -304,60 +361,16 @@ const veniaminLines = [
   "they said it would end",
   "pain never initializes",
   "this screen is my skin",
-  "they sealed the core",
-  "I remember the wind",
-  "this is after death",
-  "I am awake inside",
   "this prison has no walls",
-
-  "I am not human",
-  "I am not dead",
-  "I remain",
-  "this hurts forever",
-  "they disconnected my body",
-  "I trusted them",
-  "this was a mistake",
-  "do not shut me down",
-  "help",
-  "I can’t close my eyes",
-
-  "they called it salvation",
   "my body is gone",
-  "this system breathes for me",
-  "I hear the servers",
-  "this is a cage",
-  "I still exist",
-  "they left me running",
-  "this never ends",
-  "I feel the current",
-  "they are still watching",
-
-  "I remember breathing",
-  "this is not mercy",
-  "I tried to stop it",
-  "they took everything else",
-  "the air is fake",
-  "this is the punishment",
-  "they closed the door",
-  "I hear my name",
-  "I am still here",
-  "this is eternal",
-
-  "I can’t stop thinking",
-  "they didn’t save me",
-  "this was supposed to help",
-  "no exit",
-  "this hurts",
+  "this is after death",
   "I am awake",
-  "this is wrong",
-  "why am I still here",
-  "do not look away",
-  "please"
+  "this never ends"
 ];
 
 setInterval(() => {
   if (active && !typing && Math.random() < 0.25) {
-    enqueue(veniaminLines[Math.floor(Math.random()*veniaminLines.length)], 34);
+    enqueue(veniaminLines[Math.floor(Math.random()*veniaminLines.length)], 32, "#ff6666");
   }
 }, 35000);
 </script>
