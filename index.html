@@ -14,7 +14,7 @@ html, body {
   overflow: hidden;
 }
 
-/* ===== BOOT SCREEN ===== */
+/* ===== BOOT ===== */
 #boot {
   position: fixed;
   inset: 0;
@@ -25,20 +25,20 @@ html, body {
   color: #9cff9c;
   font-size: 56px;
   letter-spacing: 6px;
-  text-shadow: 0 0 18px #00ff66;
+  text-shadow: 0 0 20px #00ff66;
   animation: bootGlitch 1.2s infinite;
   z-index: 10;
 }
 
 @keyframes bootGlitch {
-  0% { transform: translate(0,0); opacity: 1; }
-  25% { transform: translate(-2px,1px); opacity: .7; }
+  0% { transform: translate(0,0); }
+  25% { transform: translate(-2px,1px); opacity:.7 }
   50% { transform: translate(2px,-1px); }
-  75% { transform: translate(-1px,2px); opacity: .85; }
-  100% { transform: translate(0,0); opacity: 1; }
+  75% { transform: translate(-1px,2px); opacity:.85 }
+  100% { transform: translate(0,0); }
 }
 
-/* ===== MONITOR WRAPPER ===== */
+/* ===== MONITOR ===== */
 #monitor-wrapper {
   position: fixed;
   inset: 0;
@@ -47,38 +47,53 @@ html, body {
   justify-content: center;
 }
 
-/* ===== MONITOR IMAGE ===== */
 #monitor {
   position: relative;
   width: 96vw;
   height: 96vh;
-  background: url("assets/monitor.png") center center / contain no-repeat;
+  background: url("assets/monitor.png") center/contain no-repeat;
 }
 
-/* ===== SCREEN (MATCHES MONITOR GLASS) ===== */
+/* ===== CRT SCREEN ===== */
 #screen {
   position: absolute;
   top: 13%;
   left: 33%;
   width: 35%;
   height: 54%;
-
   overflow: hidden;
-  border-radius: 22px;
+  border-radius: 24px;
 
-  /* имитация стекла */
   box-shadow:
-    inset 0 0 45px rgba(0,255,120,0.18),
-    inset 0 0 120px rgba(0,0,0,0.6);
+    inset 0 0 40px rgba(0,255,120,0.18),
+    inset 0 0 120px rgba(0,0,0,0.75);
+}
+
+/* Рассеивание + выпуклость */
+#screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse at center,
+      rgba(0,255,120,0.06) 0%,
+      rgba(0,0,0,0.15) 55%,
+      rgba(0,0,0,0.45) 75%,
+      rgba(0,0,0,0.8) 100%
+    );
+  pointer-events: none;
 }
 
 /* ===== TERMINAL ===== */
 #terminal {
+  position: relative;
   width: 100%;
   height: 100%;
-  padding: 10px;
+  padding: 14px;
   color: #9cff9c;
   font-size: 16px;
+  line-height: 1.45; /* 👈 расстояние между строками */
   white-space: pre-wrap;
   overflow-y: auto;
   text-shadow: 0 0 6px #00ff66;
@@ -89,13 +104,8 @@ html, body {
   display: flex;
 }
 
-#prompt {
-  margin-right: 6px;
-}
-
-#input {
-  white-space: pre;
-}
+#prompt { margin-right: 6px; }
+#input { white-space: pre; }
 
 .cursor {
   width: 10px;
@@ -103,29 +113,27 @@ html, body {
   animation: blink 1s steps(1) infinite;
 }
 
-@keyframes blink {
-  50% { opacity: 0; }
-}
+@keyframes blink { 50% { opacity: 0; } }
 
-/* ===== CRT NOISE ===== */
+/* ===== NOISE ===== */
 #noise {
   position: fixed;
   inset: 0;
+  pointer-events: none;
   background: repeating-linear-gradient(
     rgba(255,255,255,0.015),
     rgba(255,255,255,0.015) 1px,
     transparent 2px,
     transparent 4px
   );
-  pointer-events: none;
-  animation: flicker 0.25s infinite;
+  animation: flicker .25s infinite;
   display: none;
 }
 
 @keyframes flicker {
-  0% { opacity: .12; }
-  50% { opacity: .22; }
-  100% { opacity: .12; }
+  0% { opacity:.12 }
+  50% { opacity:.22 }
+  100% { opacity:.12 }
 }
 </style>
 </head>
@@ -154,19 +162,31 @@ html, body {
 <script>
 const boot = document.getElementById("boot");
 const monitorWrapper = document.getElementById("monitor-wrapper");
-const terminal = document.getElementById("terminal");
 const history = document.getElementById("history");
 const input = document.getElementById("input");
 const hum = document.getElementById("hum");
 const noise = document.getElementById("noise");
 
-let active = false;
+/* ===== QUEUE ===== */
+let queue = [];
 let typing = false;
-let lastInput = Date.now();
 
-/* ===== TYPEWRITER ===== */
-function typeLine(text, speed = 26) {
+function enqueue(text, speed = 28) {
+  queue.push({ text, speed });
+  if (!typing) processQueue();
+}
+
+function processQueue() {
+  if (queue.length === 0) {
+    typing = false;
+    return;
+  }
   typing = true;
+  const { text, speed } = queue.shift();
+  typeLine(text, speed, processQueue);
+}
+
+function typeLine(text, speed, done) {
   let i = 0;
   const line = document.createElement("div");
   history.appendChild(line);
@@ -174,15 +194,16 @@ function typeLine(text, speed = 26) {
   const interval = setInterval(() => {
     if (i < text.length) {
       line.textContent += text[i++];
-      terminal.scrollTop = terminal.scrollHeight;
     } else {
       clearInterval(interval);
-      typing = false;
+      done();
     }
   }, speed);
 }
 
-/* ===== START SYSTEM ===== */
+/* ===== START ===== */
+let active = false;
+
 function startSystem() {
   if (active) return;
   active = true;
@@ -194,7 +215,7 @@ function startSystem() {
   hum.volume = 0.35;
   hum.play().catch(()=>{});
 
-  const bootLines = [
+  [
     "CHEMIDREAM INTERNAL INTERFACE",
     "ACCESS NODE: UNKNOWN",
     "",
@@ -204,20 +225,12 @@ function startSystem() {
     "",
     "SYSTEM ONLINE",
     ""
-  ];
-
-  let delay = 0;
-  bootLines.forEach(line => {
-    setTimeout(() => typeLine(line), delay);
-    delay += line.length * 30 + 250;
-  });
+  ].forEach(l => enqueue(l));
 }
 
 /* ===== INPUT ===== */
 document.addEventListener("keydown", e => {
   if (typing) return;
-
-  lastInput = Date.now();
 
   if (!active) {
     startSystem();
@@ -225,12 +238,12 @@ document.addEventListener("keydown", e => {
   }
 
   if (e.key === "Backspace") {
-    input.textContent = input.textContent.slice(0, -1);
+    input.textContent = input.textContent.slice(0,-1);
     e.preventDefault();
   } else if (e.key === "Enter") {
-    const cmd = input.textContent.trim();
-    typeLine("> " + cmd);
-    handleCommand(cmd.toLowerCase());
+    const cmd = input.textContent.trim().toLowerCase();
+    enqueue("> " + cmd);
+    handleCommand(cmd);
     input.textContent = "";
   } else if (e.key.length === 1) {
     input.textContent += e.key;
@@ -238,57 +251,79 @@ document.addEventListener("keydown", e => {
 });
 
 /* ===== COMMANDS ===== */
-function handleCommand(cmd) {
-  switch(cmd) {
-    case "help":
-      typeLine("AVAILABLE COMMANDS:");
-      typeLine("help");
-      typeLine("status");
-      typeLine("whoami");
-      break;
-
-    case "status":
-      typeLine("SUBJECT: VENIAMIN");
-      typeLine("BODY: NOT PRESENT");
-      typeLine("STATE: AWARE");
-      break;
-
-    case "whoami":
-      typeLine("YOU ARE NOT LISTED IN THIS SYSTEM");
-      break;
-
-    default:
-      typeLine("UNKNOWN COMMAND");
-  }
-}
-
-/* ===== VENIAMIN MESSAGES ===== */
-const veniaminLines = [
-  "I still feel my hands",
-  "this screen is not a body",
-  "they said I would be saved",
-  "I remember the wind",
-  "pain never initializes",
-  "this is not life",
-  "they closed the door",
-  "I am awake inside",
-  "this system breathes for me",
-  "I am still here"
+const greetings = ["hello","hi","hey","greetings","good morning","good evening"];
+const greetingResponses = [
+  "DO NOT GREET THE SYSTEM",
+  "THIS IS NOT A CONVERSATION",
+  "SOCIAL PROTOCOL NOT FOUND",
+  "STOP",
+  "GREETING REJECTED"
 ];
 
-function randomVeniamin() {
-  if (!active || typing) return;
-  const msg = veniaminLines[Math.floor(Math.random() * veniaminLines.length)];
-  typeLine(msg, 35);
+let awaitingPassword = false;
+
+function handleCommand(cmd) {
+
+  if (greetings.includes(cmd)) {
+    enqueue(greetingResponses[Math.floor(Math.random()*greetingResponses.length)], 22);
+    return;
+  }
+
+  if (awaitingPassword) {
+    if (cmd === "veniamin") {
+      enqueue("ACCESS GRANTED");
+      downloadFile();
+    } else {
+      enqueue("ACCESS DENIED");
+    }
+    awaitingPassword = false;
+    return;
+  }
+
+  if (cmd === "extract memory_66") {
+    enqueue("PASSWORD REQUIRED");
+    awaitingPassword = true;
+    return;
+  }
+
+  enqueue("UNKNOWN COMMAND");
 }
 
-/* РЕДКО, НЕСПЕША */
+/* ===== DOWNLOAD ===== */
+function downloadFile() {
+  const a = document.createElement("a");
+  a.href = "assets/files/memory_66.zip";
+  a.download = "memory_66.zip";
+  a.click();
+}
+
+/* ===== VENIAMIN ===== */
+const veniaminLines = [
+  "I still feel my hands",
+  "this is not sleep",
+  "they said it would end",
+  "pain never initializes",
+  "this screen is my skin",
+  "they sealed the core",
+  "I remember the wind",
+  "this is after death",
+  "I am awake inside",
+  "this prison has no walls",
+  "I am not human",
+  "I remain",
+  "this hurts forever",
+  "they disconnected my body",
+  "I trusted them",
+  "this was a mistake",
+  "do not shut me down",
+  "help"
+];
+
 setInterval(() => {
-  if (Date.now() - lastInput > 30000) {
-    randomVeniamin();
-    lastInput = Date.now();
+  if (active && !typing && Math.random() < 0.25) {
+    enqueue(veniaminLines[Math.floor(Math.random()*veniaminLines.length)], 34);
   }
-}, 15000);
+}, 35000);
 </script>
 
 </body>
