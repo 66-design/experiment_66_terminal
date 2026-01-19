@@ -170,6 +170,7 @@ html, body {
 <div id="noise"></div>
 <audio id="hum" src="assets/hum.mp3" loop></audio>
 <audio id="glitch" src="assets/glitch.mp3"></audio>
+<audio id="type" src="assets/type.mp3"></audio>
 
 <script>
 const boot = document.getElementById("boot");
@@ -178,6 +179,7 @@ const history = document.getElementById("history");
 const input = document.getElementById("input");
 const hum = document.getElementById("hum");
 const glitch = document.getElementById("glitch");
+const typeSound = document.getElementById("type");
 const noise = document.getElementById("noise");
 
 /* QUEUE */
@@ -187,17 +189,31 @@ function enqueue(text,speed=28,cls="green"){
   queue.push({text,speed,cls});
   if(!typing)processQueue();
 }
+
 function processQueue(){
-  if(queue.length===0){typing=false;return;}
+  if(queue.length===0){ typing=false; return; }
   typing=true;
-  const{ text,speed,cls }=queue.shift();
+  const { text,speed,cls } = queue.shift();
   const line=document.createElement("div");
   line.className=cls;
   history.appendChild(line);
   let i=0;
-  const iv=setInterval(()=>{
-    if(i<text.length){ line.textContent+=text[i++]; }
-    else{ clearInterval(iv); processQueue(); }
+
+  const interval=setInterval(()=>{
+    if(i<text.length){
+      line.textContent+=text[i++];
+
+      if(Math.random()<0.7){
+        typeSound.currentTime=0;
+        typeSound.volume=0.12;
+        typeSound.playbackRate=0.9+Math.random()*0.2;
+        typeSound.play().catch(()=>{});
+      }
+
+    } else {
+      clearInterval(interval);
+      processQueue();
+    }
   },speed);
 }
 
@@ -206,10 +222,12 @@ let active=false;
 function startSystem(){
   if(active)return;
   active=true;
+
   glitch.play().catch(()=>{});
   boot.style.display="none";
   monitorWrapper.style.display="flex";
   noise.style.display="block";
+
   hum.volume=.35;
   hum.play().catch(()=>{});
 
@@ -269,10 +287,12 @@ let cwd="/";
 
 /* COMMANDS */
 function handleCommand(cmd){
+
   if(greetings.includes(cmd)){
     enqueue(greetingResponses[Math.floor(Math.random()*greetingResponses.length)],22,"red");
     return;
   }
+
   if(cmd==="ls"){ enqueue((fs[cwd]||[]).join("  ")); return; }
   if(cmd==="pwd"){ enqueue(cwd,20,"white"); return; }
 
@@ -293,7 +313,7 @@ function handleCommand(cmd){
   enqueue("UNKNOWN COMMAND",20,"red");
 }
 
-/* VENIAMIN — 50 lines */
+/* VENIAMIN — 50 LINES */
 const veniaminLines=[
 "I still feel my hands","this is not sleep","they said it would end","pain never initializes",
 "this screen is my skin","they sealed the core","I remember the wind","this is after death",
@@ -312,29 +332,23 @@ const veniaminLines=[
 /* RANDOM EVENTS */
 setInterval(()=>{
   if(!active||typing)return;
-
   const r=Math.random();
 
   if(r<0.18){
     enqueue(veniaminLines[Math.floor(Math.random()*veniaminLines.length)],34,"green");
-  }
-  else if(r<0.23){
+  } else if(r<0.23){
     enqueue("SYSTEM INSTABILITY DETECTED",20,"yellow");
     hum.volume=.6;
     setTimeout(()=>hum.volume=.35,3000);
-  }
-  else if(r<0.27){
+  } else if(r<0.27){
     locked=true;
     enqueue("INPUT SUSPENDED",20,"red");
     setTimeout(()=>locked=false,4000);
-  }
-  else if(r<0.30){
+  } else if(r<0.30){
     enqueue("████████████████",12,"red");
-  }
-  else if(r<0.33){
+  } else if(r<0.33){
     enqueue("SHUTDOWN ABORTED",18,"red");
-  }
-  else if(r<0.36){
+  } else if(r<0.36){
     enqueue("I AM STILL HERE",26,"green");
   }
 
