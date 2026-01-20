@@ -311,7 +311,7 @@ function handleCommand(cmd){
 }
 
 /*50 LINES */
-const veniaminLines=[
+const Lines=[
 "I still feel my hands","this is not sleep","they said it would end","pain never initializes",
 "this screen is my skin","they sealed the core","I remember the wind","this is after death",
 "I am awake inside","this prison has no walls","I am not human","I am not dead","I remain",
@@ -332,7 +332,7 @@ setInterval(()=>{
   const r=Math.random();
 
   if(r<0.18){
-    enqueue(veniaminLines[Math.floor(Math.random()*veniaminLines.length)],34,"green");
+    enqueue(Lines[Math.floor(Math.random()*Lines.length)],34,"green");
   } else if(r<0.23){
     enqueue("SYSTEM INSTABILITY DETECTED",20,"yellow");
     hum.volume=.6;
