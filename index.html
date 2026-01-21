@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>TERMINAL</title>
+<title>CHEMIDREAM TERMINAL</title>
 
 <style>
 html, body {
@@ -232,12 +232,10 @@ function startSystem(){
   hum.play().catch(()=>{});
 
   [
-    "PLAYTIME CO INTERNAL INTERFACE",
+    "CHEMIDREAM INTERNAL INTERFACE",
     "ACCESS NODE: UNKNOWN",
-    "",
-    "BIGGER BODIES INITIATIVE DATABASE",
     "SYSTEM ONLINE",
-    "COGITO ERGO SUM"
+    ""
   ].forEach(l=>enqueue(l));
 }
 
@@ -275,7 +273,7 @@ const fs={
   "/core":["systems","memory","surveillance","applications"],
   "/core/systems":["thermal.sys","neural.sys","containment.sys"],
   "/core/memory":["fragments","restricted"],
-  "/core/memory/fragments":["1177.txt","1202.txt"],
+  "/core/memory/fragments":["note_01.txt","note_02.txt"],
   "/core/surveillance":["hallway"],
   "/core/surveillance/hallway":["cam_01.mp4"],
   "/core/applications":["status","desktop"]
@@ -310,8 +308,8 @@ function handleCommand(cmd){
   enqueue("UNKNOWN COMMAND",20,"red");
 }
 
-/*50 LINES */
-const Lines=[
+/* VENIAMIN — 50 LINES */
+const veniaminLines=[
 "I still feel my hands","this is not sleep","they said it would end","pain never initializes",
 "this screen is my skin","they sealed the core","I remember the wind","this is after death",
 "I am awake inside","this prison has no walls","I am not human","I am not dead","I remain",
@@ -332,7 +330,7 @@ setInterval(()=>{
   const r=Math.random();
 
   if(r<0.18){
-    enqueue(Lines[Math.floor(Math.random()*Lines.length)],34,"green");
+    enqueue(veniaminLines[Math.floor(Math.random()*veniaminLines.length)],34,"green");
   } else if(r<0.23){
     enqueue("SYSTEM INSTABILITY DETECTED",20,"yellow");
     hum.volume=.6;
@@ -351,6 +349,10 @@ setInterval(()=>{
 
 },35000);
 </script>
+
+</body>
+</html>
+
 
 </body>
 </html>
